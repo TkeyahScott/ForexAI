@@ -1,3 +1,4 @@
+# Test to ensure market data retrieval is functioning correctly.
 # Import the MT5 library so we can access its timeframe constants.
 import MetaTrader5 as mt5
 
