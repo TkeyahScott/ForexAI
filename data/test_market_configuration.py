@@ -1,29 +1,59 @@
 
 # ==========================================
-# FOREXAI: MARKET CONFIGURATION TEST
+# FOREXAI: UTC TIMESTAMP CONVERSION TEST
 # ==========================================
 
-# Import the offset directly from central configuration.
-from config.market_settings import BROKER_UTC_OFFSET_SECONDS
+import pandas as pd
 
-# Import the market data conversion function.
 from data.market_data import convert_broker_timestamps_to_utc
 
-print("\n=== FOREXAI: MARKET CONFIGURATION TEST ===\n")
 
-print("CENTRAL BROKER CONFIGURATION")
-print("--------------------------------")
-print("Broker UTC offset:", BROKER_UTC_OFFSET_SECONDS, "seconds")
-print("Broker UTC offset:", BROKER_UTC_OFFSET_SECONDS / 3600, "hours")
+print("\n=== FOREXAI: UTC TIMESTAMP CONVERSION TEST ===\n")
 
-# Test a known timestamp.
+
+# ==========================================
+# TEST A KNOWN UNIX TIMESTAMP
+# ==========================================
+
+# This Unix timestamp represents:
+# 11 November 2026 at 04:00:00 UTC.
 test_timestamp = 1794369600
 
-converted_timestamp = convert_broker_timestamps_to_utc(test_timestamp)
+# The conversion function accepts a list or Pandas Series.
+converted_timestamp = convert_broker_timestamps_to_utc(
+    [test_timestamp]
+)
 
-print("\nTIMESTAMP CONVERSION")
+# Extract the converted timestamp from the Series.
+result = converted_timestamp.iloc[0]
+
+# Define the expected UTC result.
+expected_timestamp = pd.Timestamp(
+    "2026-11-11 04:00:00",
+    tz="UTC"
+)
+
+
+# ==========================================
+# VALIDATION
+# ==========================================
+
+print("TIMESTAMP CONVERSION")
 print("--------------------------------")
-print("Original timestamp:", test_timestamp)
-print("Converted UTC timestamp:", converted_timestamp)
+print("Original Unix timestamp:", test_timestamp)
+print("Converted UTC timestamp:", result)
+print("Expected UTC timestamp:", expected_timestamp)
+
+# Confirm that the timestamp was converted correctly.
+assert result == expected_timestamp, (
+    "Timestamp conversion produced an incorrect result."
+)
+
+# Confirm that the result is timezone-aware UTC.
+assert str(result.tz) == "UTC", (
+    "Timestamp is not UTC-aware."
+)
+
+print("\nUTC CONVERSION TEST: PASSED")
 
 print("\n=== TEST FINISHED ===")

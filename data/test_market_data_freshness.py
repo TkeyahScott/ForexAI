@@ -8,11 +8,8 @@ import MetaTrader5 as mt5
 
 from datetime import datetime, timezone
 
-from config.market_settings import BROKER_UTC_OFFSET_SECONDS
-from data.market_data import (
-    detect_broker_utc_offset,
-    convert_broker_timestamps_to_utc
-)
+# Import the central UTC timestamp conversion function.
+from data.market_data import convert_broker_timestamps_to_utc
 
 
 # ForexAI initial watchlist.
@@ -38,18 +35,6 @@ try:
             f"MT5 connection failed: {mt5.last_error()}"
         )
 
-    # Detect the broker's current UTC offset.
-    detected_offset = detect_broker_utc_offset()
-
-    # Use the configured offset if detection fails.
-    if detected_offset is None:
-        active_offset = BROKER_UTC_OFFSET_SECONDS
-        print("Using configured offset as fallback.")
-    else:
-        active_offset = detected_offset
-        print("Using automatically detected offset.")
-
-    print("\nActive broker offset:", active_offset, "seconds")
 
     # Inspect every currency pair.
     for symbol in WATCHLIST:
@@ -91,16 +76,13 @@ try:
             else float(tick.time)
         )
 
-        corrected_tick_epoch = (
-            raw_tick_epoch - active_offset
-        )
+        # MT5 tick timestamps are already Unix UTC timestamps.
+        # Do not subtract the broker's timezone offset.
+        tick_age = computer_epoch - raw_tick_epoch
 
-        tick_age = computer_epoch - corrected_tick_epoch
-
-        # Convert the latest candle timestamp into UTC.
+        # Convert the MT5 candle timestamp directly into UTC.
         candle_df = convert_broker_timestamps_to_utc(
-            [rates[0]["time"]],
-            active_offset
+           [rates[0]["time"]]
         )
 
         candle_time = candle_df.iloc[0]
@@ -119,7 +101,7 @@ try:
 
         print(f"Live tick age: {tick_age:.2f} seconds")
 
-        # Basic diagnostic classifications.
+        # Classify the latest tick.
         if tick_age > 300:
             print("LIVE TICK STATUS: STALE")
         elif tick_age < -10:
@@ -127,12 +109,15 @@ try:
         else:
             print("LIVE TICK STATUS: RECENT")
 
+        # Classify the latest completed candle.
         if candle_age_minutes > 30:
-            print("CANDLE STATUS: POSSIBLY STALE")
+            print("CANDLE STATUS: STALE")
+        elif candle_age_minutes < 0:
+            print("CANDLE STATUS: FUTURE TIMESTAMP")
         else:
             print("CANDLE STATUS: RECENT")
 
-    print("\n=== FRESHNESS TEST FINISHED ===")
+        print("\n=== FRESHNESS TEST FINISHED ===")
 
 finally:
 
