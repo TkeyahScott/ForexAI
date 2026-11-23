@@ -56,7 +56,20 @@ if market_data is not None:
 
                 print(f"\n  Timeframe: {timeframe}")
                 print(f"  Candles retrieved: {len(df)}")
-                print(f"  Latest completed candle: {df['time'].iloc[-1]}")
+                # Get the timestamp of the latest completed candle.
+                latest_candle = df["time"].iloc[-1]
+
+                # Convert UTC to Trinidad time for display only.
+                latest_candle_tt = latest_candle.tz_convert(
+                    "America/Port_of_Spain"
+                )
+
+                # Display Trinidad time using a 12-hour clock with AM/PM.
+                formatted_time = latest_candle_tt.strftime(
+                    "%Y-%m-%d %I:%M:%S %p TT"
+                )
+
+                print(f"  Latest completed candle: {formatted_time}")
 
             else:
 

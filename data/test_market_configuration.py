@@ -29,7 +29,7 @@ result = converted_timestamp.iloc[0]
 
 # Define the expected UTC result.
 expected_timestamp = pd.Timestamp(
-    "2026-11-11 04:00:00",
+    "2026-11-11 02:00:00",
     tz="UTC"
 )
 

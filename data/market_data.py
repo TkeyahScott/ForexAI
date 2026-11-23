@@ -18,27 +18,64 @@ import pandas as pd
 # CENTRAL TIMESTAMP CONVERSION
 # ==========================================
 
+
+
+
 def convert_broker_timestamps_to_utc(timestamps):
     """
-    Convert MT5 Unix timestamps into UTC-aware
-    Pandas datetime values.
+    Convert MetaQuotes-Demo broker timestamps into UTC.
 
-    MT5 Python API returns tick and bar timestamps
-    in UTC. Therefore, no broker offset is subtracted.
+    The broker uses:
+    - UTC+2 during European winter time.
+    - UTC+3 during European summer time.
 
-    Accepts Python lists and Pandas Series.
+    The Europe/Athens timezone database handles the
+    seasonal daylight-saving transitions.
+
+    Ambiguous timestamps during the autumn clock change
+    must be distinguishable from their chronological context.
     """
 
-    # Convert the input into a Pandas Series.
+    # Convert numeric timestamps into neutral datetime values.
     timestamp_series = pd.Series(timestamps)
 
-    # Convert Unix timestamps directly into
-    # UTC-aware datetime values.
-    return pd.to_datetime(
+    broker_clock = pd.to_datetime(
         timestamp_series,
         unit="s",
         utc=True
+    ).dt.tz_localize(None)
+
+    # Interpret the datetime values as broker-local time.
+    broker_aware = broker_clock.dt.tz_localize(
+        "Europe/Athens",
+        ambiguous="infer",
+        nonexistent="raise"
     )
+
+    # Convert broker-local time into UTC.
+    return broker_aware.dt.tz_convert("UTC")
+
+
+def convert_utc_to_trinidad_time(timestamps):
+    """
+    Convert UTC timestamps into Trinidad local time.
+
+    UTC remains the internal system standard.
+    Trinidad time is used for user-facing information.
+    Trinidad does not observe daylight saving time.
+    """
+
+    # Convert input timestamps into UTC-aware Pandas values.
+    utc_timestamps = pd.to_datetime(
+        timestamps,
+        utc=True
+    )
+
+    # Convert UTC timestamps into Trinidad local time.
+    return utc_timestamps.dt.tz_convert(
+        "America/Port_of_Spain"
+    )
+
 
 # ==========================================
 # SINGLE-SYMBOL HISTORICAL DATA
