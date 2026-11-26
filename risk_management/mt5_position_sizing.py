@@ -1,5 +1,4 @@
-
-# ==========================================
+﻿# ==========================================
 # FOREXAI: MT5 POSITION SIZING
 # ==========================================
 
@@ -13,16 +12,11 @@
 # It does not place trades.
 
 import math
-
-import MetaTrader5 as mt5
-
 from risk_management.mt5_risk_data import get_mt5_risk_data
-
 from risk_management.mt5_profit_calculator import (
     calculate_mt5_loss_per_lot,
     calculate_mt5_projected_loss
 )
-
 from risk_management.position_sizing import (
     adjust_position_size_to_broker
 )
@@ -104,10 +98,6 @@ def calculate_mt5_position_size(
             "Projected trade loss exceeds the permitted risk amount."
         )
 
-    # Calculate the projected loss using the final volume.
-    projected_trade_loss = (
-        loss_data["loss_per_lot"] * adjusted_volume
-    )
 
     # Return the complete calculation.
     return {
@@ -124,69 +114,3 @@ def calculate_mt5_position_size(
         "projected_trade_loss": projected_trade_loss
     }
 
-def calculate_mt5_projected_loss(
-            symbol,
-            direction,
-            volume,
-            entry_price,
-            stop_loss
-        ):
-        """
-        Calculate the projected trade loss using MT5
-        for the exact position volume.
-
-        This is a read-only calculation. It does not
-        place or execute a trade.
-        """
-
-        # Validate trade direction.
-        if direction not in ("BUY", "SELL"):
-            raise ValueError("Direction must be BUY or SELL.")
-
-        # Validate position volume.
-        if not isinstance(volume, (int, float)):
-            raise ValueError("Volume must be numeric.")
-
-        if not math.isfinite(volume) or volume <= 0:
-            raise ValueError("Volume must be greater than zero.")
-
-        # Select the requested symbol in MT5.
-        if not mt5.symbol_select(symbol, True):
-            raise RuntimeError(
-                f"Could not select MT5 symbol: {symbol}"
-            )
-
-        # Choose the appropriate MT5 order type.
-        order_type = (
-            mt5.ORDER_TYPE_BUY
-            if direction == "BUY"
-            else mt5.ORDER_TYPE_SELL
-        )
-
-        # Ask MT5 to calculate the projected profit or loss
-        # using the exact adjusted position volume.
-        projected_profit = mt5.order_calc_profit(
-            order_type,
-            symbol,
-            float(volume),
-            float(entry_price),
-            float(stop_loss)
-        )
-
-        if projected_profit is None:
-            raise RuntimeError(
-                f"MT5 could not calculate projected loss for {symbol}."
-            )
-
-        if projected_profit >= 0:
-            raise ValueError(
-                "The specified stop-loss does not produce a projected loss."
-            )
-
-        return {
-            "symbol": symbol,
-            "direction": direction,
-            "volume": float(volume),
-            "projected_profit": float(projected_profit),
-            "projected_trade_loss": abs(float(projected_profit))
-        }
