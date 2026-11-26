@@ -1,4 +1,4 @@
-
+﻿
 # ==========================================
 # FOREXAI: TRADE ANALYZER
 # ==========================================
@@ -65,11 +65,27 @@ def analyze_h4_trend(h4_data):
     ):
         return "NEUTRAL"
 
-    # Reject missing numerical values.
-    if not all(
-        __import__("math").isfinite(float(value))
-        for value in [close_price, ema_20, ema_50]
-    ):
+    # Ensure all values are valid numbers.
+    try:
+        close_price = float(close_price)
+        ema_20 = float(ema_20)
+        ema_50 = float(ema_50)
+
+        # Reject NaN and infinite values.
+        if not all(
+            math.isfinite(value)
+            for value in [close_price, ema_20, ema_50]
+        ):
+            return "NEUTRAL"
+
+        # Reject zero and negative prices or EMA values.
+        if any(
+            value <= 0
+            for value in [close_price, ema_20, ema_50]
+        ):
+            return "NEUTRAL"
+
+    except (TypeError, ValueError, OverflowError):
         return "NEUTRAL"
 
     # Identify a bullish H4 trend.
@@ -140,7 +156,7 @@ def confirm_h1_trend(h1_data):
         ema_50 = float(ema_50)
         rsi_14 = float(rsi_14)
 
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return "NEUTRAL"
 
     # Reject NaN and infinite values.
@@ -148,6 +164,10 @@ def confirm_h1_trend(h1_data):
         math.isfinite(value)
         for value in [ema_20, ema_50, rsi_14]
     ):
+        return "NEUTRAL"
+
+    # EMA values must be positive prices.
+    if ema_20 <= 0 or ema_50 <= 0:
         return "NEUTRAL"
 
     # RSI must be within its valid range.
@@ -194,12 +214,14 @@ def generate_m15_entry_signal(m15_data, h4_trend, h1_trend):
         str: BUY, SELL or NO TRADE
     """
 
-    # Higher timeframes must agree before considering an entry.
-    if h4_trend != h1_trend:
+    # Validate higher-timeframe trend values.
+    valid_trends = ["BULLISH", "BEARISH"]
+
+    if h4_trend not in valid_trends or h1_trend not in valid_trends:
         return "NO TRADE"
 
-    # Only bullish or bearish conditions are eligible.
-    if h4_trend not in ["BULLISH", "BEARISH"]:
+    # Higher timeframes must agree before considering an entry.
+    if h4_trend != h1_trend:
         return "NO TRADE"
 
     # Ensure M15 market data is available.
@@ -235,7 +257,7 @@ def generate_m15_entry_signal(m15_data, h4_trend, h1_trend):
         ema_20 = float(latest_candle["ema_20"])
         rsi_14 = float(latest_candle["rsi_14"])
 
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return "NO TRADE"
 
     # Reject NaN and infinite values.
@@ -264,6 +286,19 @@ def generate_m15_entry_signal(m15_data, h4_trend, h1_trend):
 
     # RSI must be within its valid range.
     if not 0 <= rsi_14 <= 100:
+        return "NO TRADE"
+
+    # All candle prices and EMA20 must be positive.
+    if any(
+        price <= 0
+        for price in [
+            open_price,
+            high_price,
+            low_price,
+            close_price,
+            ema_20
+        ]
+    ):
         return "NO TRADE"
 
     # --------------------------------------
@@ -318,3 +353,36 @@ def generate_m15_entry_signal(m15_data, h4_trend, h1_trend):
 
     # No valid entry was identified.
     return "NO TRADE"
+
+# ==========================================
+# COMPLETE MULTI-TIMEFRAME TRADE ANALYSIS
+# ==========================================
+
+def analyze_market(h4_data, h1_data, m15_data):
+    """
+    Coordinate the complete H4, H1 and M15 analysis.
+
+    Returns:
+        dict: Contains the H4 trend, H1 confirmation,
+              and final M15 trade signal.
+    """
+
+    # Step 1: Identify the main H4 market trend.
+    h4_trend = analyze_h4_trend(h4_data)
+
+    # Step 2: Confirm the direction using H1.
+    h1_trend = confirm_h1_trend(h1_data)
+
+    # Step 3: Identify a potential M15 entry.
+    entry_signal = generate_m15_entry_signal(
+        m15_data,
+        h4_trend,
+        h1_trend
+    )
+
+    # Return all analysis results together.
+    return {
+        "h4_trend": h4_trend,
+        "h1_trend": h1_trend,
+        "entry_signal": entry_signal
+    }
